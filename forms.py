@@ -146,10 +146,12 @@ class VenueForm(Form):
         'image_link', validators=[URL()]
     )
     
+    # VALIDATE GENRES
     def validate_genres(form,genres):
         if len(genres.data) > 5:
             raise ValidationError('No more than 5 genres please')
     
+    # VALIDATE PHONE
     def validate_phone(form, field):
         if len(field.data) < 10:
             raise ValidationError('Invalid phone number.')
@@ -263,9 +265,13 @@ class ArtistForm(Form):
     image_link = StringField(
         'image_link', validators=[URL()]
     )
+
+    # VALIDATE GENRES
     def validate_genres(form,genres):
         if len(genres.data) > 5:
             raise ValidationError('No more than 5 genres please')
+    
+    # VALIDATE PHONE
     def validate_phone(form, field):
         if len(field.data) < 10:
             raise ValidationError('Invalid phone number.')

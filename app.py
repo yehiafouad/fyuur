@@ -30,13 +30,13 @@ csrf = CSRFProtect(app)
 # Filters.
 #----------------------------------------------------------------------------#
 
+# I replaced babel package because it's not working with me with timeago package.
 def dateTime_format(value, format='medium'):
     date = dateutil.parser.parse(value)
     isoFormat = dt.isoformat(date)
     now = dt.now()
     result = timeago.format(date, now)
     return result
-
 
 app.jinja_env.filters['datetime'] = dateTime_format
 
@@ -58,7 +58,11 @@ def index():
 def venues():
     # TODO: replace with real venues data.
     #       num_shows should be aggregated based on number of upcoming shows per venue.
+
+    # SET EMPTY ARRAY FOR DATA
     data = []
+
+    # GET ALL VENUE AND SHOWS DATA
     venues = Venue.query.all()
     shows = Show.query.all()
 
@@ -70,6 +74,8 @@ def venues():
     map = {}
 
     numUpcomingShows = 0
+
+    # SHOW ONLY AVAILABLE SHOWS FOR VENUES
     for venue in venues:
         showsAvail = Show.query.filter_by(venue_id=venue.id)
         numUpcomingShows = (showsAvail.filter(
@@ -88,6 +94,8 @@ def venues():
             map[key] = [venue_data]
         else:
             map[key].append(venue_data)
+
+    # SHOW VENUES FOR EVERY LOCATION.
     for key, value in map.items():
         #print (key)
         add = key.split("*")
@@ -108,11 +116,18 @@ def search_venues():
     # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
     # seach for Hop should return "The Musical Hop".
     # search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
+
+    # GET SEARCH INPUT VALUE
     search_term = request.form.get('search_term')
+
+    # FILTER BY INPUT VALUE WITH THE NEAREST VENUE NAME
     venues = Venue.query.filter(
         Venue.name.ilike('%{}%'.format(search_term))).all()
+
+    # SET EMPTY ARRAY FOR RESULTS
     data = []
 
+    # GET ALL AVAILABLE SHOWS AS PER SEARCH INPUT VALUE
     for venue in venues:
         showsAvail = Show.query.filter_by(venue_id=venue.id)
         numUpcomingShows = (showsAvail.filter(
@@ -124,6 +139,7 @@ def search_venues():
         }
         data.append(venue_data)
 
+    # COUNT DATA RESULT
     response = {
         "count": len(data),
         "data": data
@@ -137,15 +153,18 @@ def search_venues():
 def show_venue(venue_id):
     # shows the venue page with the given venue_id
     # TODO: replace with real venue data from the venues table, using venue_id
+
+    # GRAB THE ID FROM PARAMS AND GET VENUE DATA
     selectedVenue = Venue.query.get(venue_id)
     numShows = Show.query.filter_by(venue_id=selectedVenue.id).all()
+
+    # SET EMPTY ARRAYS FOR PAST SHOWS AND UPCOMING ONE
     listOfPastShows = []
     listOfUpcomingShows = []
 
+    # GET ALL SHOWS AND STORE THEM IN THE BOTH ARRAYS
     for show in numShows:
-        print(show.artist_id)
         artist = Artist.query.get(show.artist_id)
-        print(artist)
         show_data = {
             'artist_id': show.artist_id,
             'artist_name': artist.name,
@@ -156,9 +175,10 @@ def show_venue(venue_id):
             listOfPastShows.append(show_data)
         else:
             listOfUpcomingShows.append(show_data)
-    print(listOfPastShows, listOfUpcomingShows)
+
     venueInfo = ContactInfo.query.get(selectedVenue.contact_id)
 
+    # DISPLAY VENUE DATA
     data = {
         "id": selectedVenue.id,
         "name": selectedVenue.name,
@@ -190,12 +210,14 @@ def create_venue_form():
 @app.route('/venues/create', methods=['POST'])
 def create_venue_submission():
     error = None
+    # VALIDATE FORM
     form = VenueForm(request.form)
     if not form.validate():
         flash('Bad Input, See Below')
         return render_template('forms/new_venue.html', form=form)
 
     try:
+        # COLLECT ALL FORM FIELDS 
         name = request.form['name']
         city = request.form['city']
         state = request.form['state']
@@ -204,6 +226,8 @@ def create_venue_submission():
         genres = request.form.getlist('genres')
         facebook_link = request.form['facebook_link']
         image_link = request.form['image_link']
+
+        # STORE VENUE DATA INTO DATABASE
         contact = ContactInfo(city=city, state=state, address=address,
                               phone=phone, facebook_link=facebook_link)
         db.session.add(contact)
@@ -211,9 +235,13 @@ def create_venue_submission():
         contact_id = contact.id
         venue_created = Venue(name=name, genres=genres,
                               image_link=image_link, contact_id=contact_id)
+        
+        # VALIDATE GENRES AND RETURN ERROR IF MORE THAN 5
         if len(genres) > 5:
             flash('No more than 5 genres please')
             return redirect(url_for('create_venue_form'))
+
+        #  ADD NEW VENUE AND COMMIT CHANGES 
         db.session.add(venue_created)
         db.session.commit()
     except:
@@ -222,12 +250,14 @@ def create_venue_submission():
         error = True
     finally:
         db.session.close()
+
+    # DETECT IF THERE IS AN ERROR OR NOT
     if not error:
         print(ValidationError)
         flash('Venue ' + name + ' was successfully listed!')
     else:
         flash('An error occurred. Venue ' + name + ' could not be listed.')
-        # return redirect(url_for('create_venue_form'))
+
     return render_template('pages/home.html', form=form)
 
 
@@ -236,6 +266,7 @@ def delete_venue(venue_id):
     # TODO: Complete this endpoint for taking a venue_id, and using
     # SQLAlchemy ORM to delete a record. Handle cases where the session commit could fail.
     try:
+        # FILTER VENUE BY ID AND DELETE IT.
         Venue.query.filter_by(id=venue_id).delete()
         db.session.commit()
     except:
@@ -254,8 +285,14 @@ def delete_venue(venue_id):
 @app.route('/artists')
 def artists():
     # TODO: replace with real data returned from querying the database
+
+    # SET EMPTY ARRAY FOR DATA
     data = []
+
+    # GET ALL ARTIST DATA
     artists = Artist.query.all()
+
+    # GET ALL VALUES AND APPEND THEM TO DATA ARRAY
     for artist in artists:
         artist_data = {
             'id': artist.id,
@@ -271,11 +308,18 @@ def search_artists():
     # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
     # seach for "A" should return "Guns N Petals", "Matt Quevado", and "The Wild Sax Band".
     # search for "band" should return "The Wild Sax Band".
+
+    # GET SEARCH INPUT VALUE
     search_term = request.form.get('search_term')
+
+    # FILTER BY INPUT VALUE WITH THE NEAREST ARTIST NAME
     artists = Artist.query.filter(
         Artist.name.ilike('%{}%'.format(search_term))).all()
+
+    # SET EMPTY ARRAY
     data = []
 
+    # GET ALL AVAILABLE SHOWS FOR ARTIST AS PER SEARCH INPUT VALUE
     for artist in artists:
         showsAvail = Show.query.filter_by(artist_id=artist.id)
         numUpcomingShows = (showsAvail.filter(
@@ -287,6 +331,7 @@ def search_artists():
         }
         data.append(artist_data)
 
+    # COUNT DATA RESULT
     response = {
         "count": len(data),
         "data": data
@@ -299,18 +344,24 @@ def search_artists():
 def show_artist(artist_id):
     # shows the venue page with the given venue_id
     # TODO: replace with real venue data from the venues table, using venue_id
+
+    # SET EMPTY ARRAY FOR DATA
     data = []
+
+    # GET SELECTED ARTIST BY ID AND GET CONTACT INFO
     selectedArtist = Artist.query.get(artist_id)
     artistInfo = ContactInfo.query.get(selectedArtist.contact_id)
 
+    # GET NUMBER OF SHOWS FOR ARTIST
     numShows = Show.query.filter_by(artist_id=selectedArtist.id).all()
+
+    # SET TWO EMPTY ARRAYS FOR PAST AND UPCOMMING SHOWS
     listOfPastShows = []
     listOfUpcomingShows = []
 
+    # GET ALL SHOWS AND STORE THEM IN THE BOTH ARRAYS
     for show in numShows:
-        print(show.venue_id)
         venue = Venue.query.get(show.venue_id)
-        print(venue)
         show_data = {
             'venue_id': show.venue_id,
             'venue_name': venue.name,
@@ -321,7 +372,8 @@ def show_artist(artist_id):
             listOfPastShows.append(show_data)
         else:
             listOfUpcomingShows.append(show_data)
-    print(listOfPastShows, listOfUpcomingShows)
+
+    # DISPLAY VENUE DATA
     data = {
         "id": selectedArtist.id,
         "name": selectedArtist.name,
@@ -345,11 +397,16 @@ def show_artist(artist_id):
 
 @app.route('/artists/<int:artist_id>/edit', methods=['GET'])
 def edit_artist(artist_id):
+
+    # SET ARTIST AS AN OBJECT
     artist = {}
     form = ArtistForm()
+
+    # GET ARTIST DATA BY ID AND CONTACT INFO
     selectedArtist = Artist.query.get(artist_id)
     artistInfo = ContactInfo.query.get(selectedArtist.contact_id)
 
+    # UPDATE FORM DATA
     form.name.data = selectedArtist.name
     form.genres.data = selectedArtist.genres
     form.image_link.data = selectedArtist.image_link
@@ -358,6 +415,7 @@ def edit_artist(artist_id):
     form.facebook_link.data = artistInfo.facebook_link
     form.phone.data = artistInfo.phone
 
+    # PUSH ARTIST ID AND NAME 
     artist = {
         "id": selectedArtist.id,
         "name": selectedArtist.name
@@ -370,12 +428,17 @@ def edit_artist(artist_id):
 def edit_artist_submission(artist_id):
     # TODO: take values from the form submitted, and update existing
     # artist record with ID <artist_id> using the new attributes
+
     error = None
     form = ArtistForm(request.form)
+
+    # VALIDATE FORM
     if not form.validate():
         flash('Bad Input, See Below')
         return render_template('forms/edit_artist.html', form=form)
+
     try:
+        # GET ALL FORM DATA AND STORE THEM INTO DATABASE
         selectedArtist = Artist.query.get(artist_id)
         artistInfo = ContactInfo.query.get(selectedArtist.contact_id)
         selectedArtist.name = request.form['name']
@@ -386,6 +449,7 @@ def edit_artist_submission(artist_id):
         artistInfo.facebook_link = request.form['facebook_link']
         selectedArtist.image_link = request.form['image_link']
 
+        # COMMIT CHANGES
         db.session.commit()
 
     except:
@@ -405,10 +469,14 @@ def edit_artist_submission(artist_id):
 
 @app.route('/venues/<int:venue_id>/edit', methods=['GET'])
 def edit_venue(venue_id):
+    venue = {}
     form = VenueForm()
+
+    # GET VENUE VALUE AND CONTACT INFO
     selectedVenue = Venue.query.get(venue_id)
     venueInfo = ContactInfo.query.get(selectedVenue.contact_id)
 
+    # UPDATE VALUE AND STORE THEM INTO DATABASE
     form.name.data = selectedVenue.name
     form.genres.data = selectedVenue.genres
     form.image_link.data = selectedVenue.image_link
@@ -417,6 +485,8 @@ def edit_venue(venue_id):
     form.state.data = venueInfo.state
     form.facebook_link.data = venueInfo.facebook_link
     form.phone.data = venueInfo.phone
+
+    # DISPLAY VENUE ID AND NAME
     venue = {
         "id": selectedVenue.id,
         "name": selectedVenue.name,
@@ -429,12 +499,18 @@ def edit_venue(venue_id):
 def edit_venue_submission(venue_id):
     # TODO: take values from the form submitted, and update existing
     # venue record with ID <venue_id> using the new attributes
+
+
     error = None
     form = VenueForm(request.form)
+
+    # VALIDATE FORM
     if not form.validate():
         flash('Bad Input, See Below')
         return render_template('forms/edit_venue.html', form=form)
+
     try:
+        # GET FORM DATA AND UPDATE THEM INTO DATABASE
         selectedVenue = Venue.query.get(venue_id)
         venueInfo = ContactInfo.query.get(selectedVenue.contact_id)
         selectedVenue.name = request.form['name']
@@ -446,6 +522,7 @@ def edit_venue_submission(venue_id):
         venueInfo.facebook_link = request.form['facebook_link']
         selectedVenue.image_link = request.form['image_link']
 
+        # COMMIT CHANGES
         db.session.commit()
 
     except:
@@ -478,10 +555,13 @@ def create_artist_submission():
     # TODO: modify data to be the data object returned from db insertion
     error = None
     form = ArtistForm(request.form)
+
+    # VALIDATE FORM
     if not form.validate():
         flash('Bad Input, See Below')
         return render_template('forms/new_artist.html', form=form)
     try:
+        # GET ALL FORM INPUT VALUES
         name = request.form['name']
         city = request.form['city']
         state = request.form['state']
@@ -489,11 +569,15 @@ def create_artist_submission():
         genres = request.form.getlist('genres')
         facebook_link = request.form['facebook_link']
         image_link = request.form['image_link']
+
+        # STORE CONTACT INFO INTO DATABASE
         contact = ContactInfo(city=city, state=state, phone=phone,
                               facebook_link=facebook_link)
         db.session.add(contact)
         db.session.commit()
         contact_id = contact.id
+
+        # STORE NEW ARTIST INTO DATABASE
         artist_created = Artist(name=name, genres=genres,
                                 image_link=image_link, contact_id=contact_id)
         db.session.add(artist_created)
@@ -520,16 +604,15 @@ def shows():
     # displays list of shows at /shows
     # TODO: replace with real venues data.
     #       num_shows should be aggregated based on number of upcoming shows per venue.
+
+    # SET EMPTY ARRAY AND GET ALL SHOWS DATA
     data = []
     shows = Show.query.all()
 
+    # GET SHOWS DATA AND APPEND THEM INTO DATA ARRAY
     for show in shows:
-        # Adding the first to query the actual object
-        # See https://flask-sqlalchemy.palletsprojects.com/en/2.x/queries/
         venue = Venue.query.filter_by(id=show.venue_id).first()
-        print(venue.name)
         artist = Artist.query.filter_by(id=show.artist_id).first()
-        print(artist.name, artist.image_link)
         show_data = {
             'venue_id': show.venue_id,
             'venue_name': venue.name,
@@ -557,9 +640,12 @@ def create_show_submission():
     error = False
     form = ShowForm()
     try:
+        # GET FORM DATA
         artist_id = request.form['artist_id']
         venue_id = request.form['venue_id']
         start_time = request.form['start_time']
+
+        # STORE SHOW DATA
         show_created = Show(artist_id=artist_id,
                             venue_id=venue_id, start_time=start_time)
         db.session.add(show_created)

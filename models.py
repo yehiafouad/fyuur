@@ -8,7 +8,7 @@ app.config.from_object('config')
 db = SQLAlchemy(app)
 
 
-
+# VENUE MODEL
 class Venue(db.Model):
     __tablename__ = 'Venue'
 
@@ -18,7 +18,7 @@ class Venue(db.Model):
     genres = db.Column(db.ARRAY(db.String))
     contact_id = db.Column(db.Integer, db.ForeignKey('ContactInfo.id'))  
 
-
+# ARTIST MODEL
 class Artist(db.Model):
     __tablename__ = 'Artist'
 
@@ -28,6 +28,7 @@ class Artist(db.Model):
     image_link = db.Column(db.String(500))
     contact_id = db.Column(db.Integer, db.ForeignKey('ContactInfo.id'))
 
+# SHOW MODEL
 class Show(db.Model):
     __tablename__= 'Show'
 
@@ -36,6 +37,7 @@ class Show(db.Model):
     artist_id = db.Column(db.Integer, db.ForeignKey('Artist.id'), nullable=False)
     venue_id = db.Column(db.Integer, db.ForeignKey('Venue.id'), nullable=False)
 
+# CONTACT INFO FOR VENUE AND ARTIST MODEL
 class ContactInfo(db.Model):
     __tablename__='ContactInfo'
 
